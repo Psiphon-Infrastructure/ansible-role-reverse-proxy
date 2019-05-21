@@ -1,0 +1,54 @@
+---
+# file: ansible-role-reverse-proxy/tasks/main.yaml
+#- import_role: 
+#    name: ansible-role-common
+#  become: false
+- import_role: 
+    name: geerlingguy.docker
+  become: yes
+
+# nginx docker
+- name: Create nginx-data directory
+  file:
+    path: "{{ nginx_data_dir }}"
+    state: directory
+    mode: 644
+
+- name: Copy NGINX config
+  template:
+    src: "{{ nginx_config_template }}"
+    dest: "{{ nginx_data_dir}}/nginx.conf"
+
+
+- name: Generate server certificates
+  shell: openssl req -x509 -newkey rsa:4096 -nodes -keyout {{ nginx_data_dir}}/server.key -out {{ nginx_data_dir }}/server.crt -days {{ new_cert_expiry }} -subj "/c={{ new_cert_country }}/ST={{ new_cert_state }}/O={{ new_cert_company }}"
+  args:
+    creates: "{{ nginx_data_dir }}/server.key"
+
+- name: Create docker network
+  command: "docker network create {{ nginx_container_network }}"
+  ignore_errors: yes
+
+- name: Check if NGNIX docker container is running
+  shell: docker ps | grep {{ nginx_container_name }}
+  register: nginx_container_running
+  changed_when: false
+  ignore_errors: yes
+
+- name: Check if NGINX docker container exist
+  command: docker inspect {{ nginx_container_name }}
+  register: nginx_container_exist
+  changed_when: false
+  ignore_errors: yes
+
+- name: Get NGINX docker image
+  shell: docker pull nginx
+  when: not nginx_container_exist.rc == 0
+
+- name: Run NGINX docker
+  shell: docker run --name {{ nginx_container_name }} --net {{nginx_container_network}} -v {{ nginx_data_dir }}/nginx.conf:/etc/nginx/nginx.conf:ro -v {{ nginx_data_dir }}:/etc/nginx/ -p {{ nginx_container_port }} --restart unless-stopped --detach nginx 
+  when: not nginx_container_exist.rc == 0
+
+- name: Start existing NGINX docker container
+  shell: docker start {{ nginx_container_name }}
+  when: nginx_container_exist.rc == 0 and not nginx_container_running.rc == 0

@@ -1,0 +1,20 @@
+---
+# Directory for config, cert, and key files
+nginx_data_dir: "/opt/nginx-data"
+
+# Template name for NGINX configuration
+nginx_config_template: "nginx.conf.j2"
+
+# Certificate information if new one is generated. If not place your certificates in {{ nginx_data_dir }}/server.crt and server.key
+new_cert_expiry: 365
+new_cert_country: "CA"
+new_cert_state: "ON"
+new_cert_company: "Company"
+
+# NGINX Docker container information
+nginx_container_name: "nginx"
+nginx_container_network: "nginx-net"
+nginx_conatiner_port: "8443:443"
+
+# Back end URL
+nginx_proxy_pass: "http://localhost:9090/"
