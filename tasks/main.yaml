@@ -1,33 +1,25 @@
 ---
-# file: ansible-role-reverse-proxy/tasks/main.yaml
-#- import_role: 
-#    name: ansible-role-common
-#  become: false
-- import_role: 
-    name: geerlingguy.docker
-  become: yes
-
 # nginx docker
 - name: Create nginx-data directory
   file:
     path: "{{ nginx_data_dir }}"
     state: directory
-    mode: 644
+    mode: 0644
 
 - name: Copy NGINX config
   template:
     src: "{{ nginx_config_template }}"
     dest: "{{ nginx_data_dir}}/nginx.conf"
+  register: nginx_config
 
-
+# This part should be changed to match PKI structure. Or be owerewritten in other playbook
 - name: Generate server certificates
   shell: openssl req -x509 -newkey rsa:4096 -nodes -keyout {{ nginx_data_dir}}/server.key -out {{ nginx_data_dir }}/server.crt -days {{ new_cert_expiry }} -subj "/c={{ new_cert_country }}/ST={{ new_cert_state }}/O={{ new_cert_company }}"
   args:
     creates: "{{ nginx_data_dir }}/server.key"
 
 - name: Create docker network
-  command: "docker network create {{ nginx_container_network }}"
-  ignore_errors: yes
+  shell: "docker network create {{ nginx_container_network }} || true"
 
 - name: Check if NGNIX docker container is running
   shell: docker ps | grep {{ nginx_container_name }}
@@ -52,3 +44,7 @@
 - name: Start existing NGINX docker container
   shell: docker start {{ nginx_container_name }}
   when: nginx_container_exist.rc == 0 and not nginx_container_running.rc == 0
+
+- name: Restart NGINX container if config changed
+  shell: docker restart {{ nginx_container_name }}
+  when: nginx_config.changed
