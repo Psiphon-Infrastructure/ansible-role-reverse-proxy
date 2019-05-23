@@ -18,3 +18,6 @@ nginx_conatiner_port: "8443:443"
 
 # Back end URL
 nginx_proxy_pass: "http://localhost:9090/"
+
+# List of whitelisted IPs. Set to 'all' to allow all IPs
+allowedHosts: ['127.0.0.1']
