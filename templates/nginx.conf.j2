@@ -4,7 +4,7 @@ http {
         server_name         {{ inventory_hostname }};
         ssl_certificate     /etc/nginx/server.crt;
         ssl_certificate_key /etc/nginx/server.key;
-	{% for host in groups['prometheus-servers'] %}
+	{% for host in groups['prometheus_servers'] %}
 	allow {{ hostvars[host]['ansible_default_ipv4']['address'] }};
 	{% endfor %}
 
