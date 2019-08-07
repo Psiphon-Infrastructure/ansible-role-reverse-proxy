@@ -1,23 +1,17 @@
 ---
-# Directory for config, cert, and key files
-nginx_data_dir: "/opt/nginx-data"
+reverse_proxy_nginx_container_name: reverse_proxy_nginx
+reverse_proxy_nginx_label: "role=reverse_proxy"
 
-# Template name for NGINX configuration
-nginx_config_template: "nginx.conf.j2"
+reverse_proxy_nginx_data_dir: "{{ global_ansible_dir }}/{{ reverse_proxy_nginx_container_name }}"
 
-# Certificate information if new one is generated. If not place your certificates in {{ nginx_data_dir }}/server.crt and server.key
-new_cert_expiry: 365
-new_cert_country: "CA"
-new_cert_state: "ON"
-new_cert_company: "Company"
+# reverse_proxy_docker_remove_container will destroy container when set to true
+reverse_proxy_docker_remove_container: false
+# reverse_proxy_nginx_new_cert will archive old certificate to old_cert_<epoch>.tar.gz and get new certificates when set to true
+reverse_proxy_nginx_new_cert: false
+# reverse_proxy_nginx_new_config will archive old config to old_config_<epoch>.tar.gx and roll out new config when set to true
+reverse_proxy_nginx_new_config: false
 
-# NGINX Docker container information
-nginx_container_name: "nginx"
-nginx_container_network: "nginx-net"
-nginx_conatiner_port: "8443:443"
-
-# Back end URL
-nginx_proxy_pass: "http://localhost:9090/"
-
-# List of whitelisted IPs. Set to 'all' to allow all IPs
-allowedHosts: ['127.0.0.1']
+# config
+reverse_proxy_nginx_http: false
+reverse_proxy_nginx_https: true
+reverse_proxy_nginx_cert_ext: crt

@@ -1,0 +1,6 @@
+- name: Generate self signed server certificates 
+  shell: openssl req -x509 -newkey rsa:4096 -nodes -keyout {{ reverse_proxy_nginx_data_dir }}/certs/server.key -out {{ reverse_proxy_nginx_data_dir }}/certs/server.crt -days {{ global_certificate_validity }} -subj "/c={{ global_certificate_country }}/ST={{ global_certificate_state }}/O={{ global_certificate_company }}/CN={{ inventory_hostname }}"
+  args:
+    creates: "{{ reverse_proxy_nginx_data_dir }}/certs/server.key"
+  become: true
+
