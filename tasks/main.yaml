@@ -27,9 +27,7 @@
 - name: Delete old container
   shell: docker rm -f $(docker ps -a -q --filter "label={{ reverse_proxy_nginx_label }}")
   register: docker_removed
-  when: >
-    reverse_proxy_docker_remove_container|bool or
-    reverse_proxy_docker_rebuild|bool
+  when: reverse_proxy_docker_remove_container|bool
   failed_when:
     - docker_removed.rc != 0
     - '"requires at least 1 argument" not in docker_removed.stderr'
