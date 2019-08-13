@@ -11,6 +11,6 @@ server {
       index index.html  index.htm;
     }
 
-    include {{ reverse_proxy_nginx_data_dir }}/conf.d/*.http.location;
+    include /etc/nginx/conf.d/*.http.location;
 }
 
