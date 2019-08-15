@@ -17,7 +17,7 @@
   file:
     path: "{{ item }}"
     state: directory
-    mode: 0644
+    mode: 0755
   with_items:
     - "{{ reverse_proxy_nginx_data_dir }}"
     - "{{ reverse_proxy_nginx_data_dir }}/conf.d"
