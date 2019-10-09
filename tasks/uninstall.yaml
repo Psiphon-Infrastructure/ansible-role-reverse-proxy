@@ -10,8 +10,9 @@
 
 - name: Remove NGINX docker image
   shell: docker image rm nginx
+  ignore_errors: true
 
-- name: Create docker network
+- name: Remove docker network
   shell: "docker network remove {{ nginx_container_network }} || true"
 
 - name: Remove certificates
