@@ -1,0 +1,33 @@
+---
+# nginx docker
+- name: Stop existing NGINX docker container
+  shell: docker stop {{ nginx_container_name }}
+  ignore_errors: yes
+
+- name: Remove NGINX docker
+  shell: docker rm {{ nginx_container_name }} 
+  ignore_errors: yes
+
+- name: Remove NGINX docker image
+  shell: docker image rm nginx
+
+- name: Create docker network
+  shell: "docker network remove {{ nginx_container_network }} || true"
+
+- name: Remove certificates
+  file:
+    path: "{{ nginx_data_dir }}/server.key"
+    state: absent
+- file:
+    path: "{{ nginx_data_dir }}/server.crt"
+    state: absent
+
+- name: Remove NGINX Config
+  file:
+    path: "{{ nginx_data_dir }}/nginx.conf"
+    state: absent
+
+- name: Remove nginx-data directory
+  file:
+    path: "{{ nginx_data_dir }}"
+    state: absent
