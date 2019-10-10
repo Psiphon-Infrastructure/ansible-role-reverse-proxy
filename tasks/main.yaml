@@ -1,50 +1,127 @@
 ---
 # nginx docker
+
+- block:
+    - name: Check Docker installtion 
+      command: docker --version
+      register: docker
+      changed_when: false
+  rescue:
+    - name: Install docker
+      include_role: 
+        name: geerlingguy.docker
+        apply:
+          become: true
+
 - name: Create nginx-data directory
   file:
-    path: "{{ nginx_data_dir }}"
+    path: "{{ item }}"
     state: directory
-    mode: 0644
+    mode: 0755
+  with_items:
+    - "{{ reverse_proxy_nginx_data_dir }}"
+    - "{{ reverse_proxy_nginx_data_dir }}/conf.d"
+    - "{{ reverse_proxy_nginx_data_dir }}/certs"
+  become: true
 
-- name: Copy NGINX config
+- name: Delete old container
+  shell: docker rm -f $(docker ps -a -q --filter "label={{ reverse_proxy_nginx_label }}")
+  register: docker_removed
+  when: reverse_proxy_docker_remove_container|bool
+  failed_when:
+    - docker_removed.rc != 0
+    - '"requires at least 1 argument" not in docker_removed.stderr'
+  become : true
+
+- name: archive old config
+  archive:
+    path:
+      - "{{ reverse_proxy_nginx_data_dir }}/conf.d/*"
+    dest: "{{ reverse_proxy_nginx_data_dir }}/old_config_{{ ansible_date_time.epoch }}.tar.gz"
+    remove: true
+  register: archive_config
+  when: reverse_proxy_nginx_new_config|bool
+  failed_when: 
+    - archive_config.failed 
+    - '"no source paths were found" not in archive_config.msg'
+  become: true
+
+
+- name: Create NGINX docker container
+  command: docker create \
+            --name {{ reverse_proxy_nginx_container_name }} \
+            --label {{ reverse_proxy_nginx_label }} \
+            --net host \
+            -v {{ reverse_proxy_nginx_data_dir }}/conf.d:/etc/nginx/conf.d:ro \
+            -v {{ reverse_proxy_nginx_data_dir }}/certs:/etc/nginx/certs:ro \
+            --restart unless-stopped \
+            nginx
+  register: docker_create
+  failed_when:
+    - docker_create.rc != 0
+    - '"is already in use by container" not in docker_create.stderr'
+  changed_when:
+    - docker_create.rc == 0
+  notify: "reverse_proxy_nginx_restart"
+  become: true
+
+- name: copy http server config
   template:
-    src: "{{ nginx_config_template }}"
-    dest: "{{ nginx_data_dir}}/nginx.conf"
-  register: nginx_config
+    src: default.server.http.conf.j2
+    dest: "{{ reverse_proxy_nginx_data_dir }}/conf.d/default.server.http.conf"
+    owner: root
+    mode: 0600
+  when: reverse_proxy_nginx_http
+  notify: "reverse_proxy_nginx_restart"
+  become: true
 
-# This part should be changed to match PKI structure. Or be owerewritten in other playbook
-- name: Generate server certificates
-  shell: openssl req -x509 -newkey rsa:4096 -nodes -keyout {{ nginx_data_dir}}/server.key -out {{ nginx_data_dir }}/server.crt -days {{ new_cert_expiry }} -subj "/c={{ new_cert_country }}/ST={{ new_cert_state }}/O={{ new_cert_company }}"
-  args:
-    creates: "{{ nginx_data_dir }}/server.key"
+- name: setup TLS
+  block:
 
-- name: Create docker network
-  shell: "docker network create {{ nginx_container_network }} || true"
+    - name: check if joined the domain
+      shell: kinit -k host/$(hostname -f)
+      register: domain_joined
+      failed_when: false
+      changed_when: false
 
-- name: Check if NGNIX docker container is running
-  shell: docker ps | grep {{ nginx_container_name }}
-  register: nginx_container_running
-  changed_when: false
-  ignore_errors: yes
+    - name: archive old cert
+      archive:
+        path:
+          - "{{ reverse_proxy_nginx_data_dir }}/certs/*"
+        dest: "{{ reverse_proxy_nginx_data_dir }}/old_cert_{{ ansible_date_time.epoch }}.tar.gz"
+        remove: true
+      register: archive_cert
+      when: reverse_proxy_nginx_new_cert|bool
+      failed_when: 
+        - archive_cert.failed 
+        - '"no source paths were found" not in archive_cert.msg'
 
-- name: Check if NGINX docker container exist
-  command: docker inspect {{ nginx_container_name }}
-  register: nginx_container_exist
-  changed_when: false
-  ignore_errors: yes
+    - name: generate certificate
+      include_tasks: ./ansible-playbooks/ipa-getcert.yml 
+      vars:
+        pki_dir: "{{ reverse_proxy_nginx_data_dir }}/certs"
+        ipa_host: "{{ server }}"
+        ipa_admin_user: "{{ ipa_principal }}"
+        ipa_admin_pass: "{{ ipa_password }}"
+        use_custom_root: false
+        cert_chain_checksum: "{{ vault_ipa_cert_hash }}"
+      when: domain_joined.rc == 0
+    - set_fact: 
+        reverse_proxy_nginx_cert_ext: chain
+      when: domain_joined.rc == 0
 
-- name: Get NGINX docker image
-  shell: docker pull nginx
-  when: not nginx_container_exist.rc == 0
+    - include_tasks: get_selfsigned_cert.yaml
+      when: domain_joined.rc != 0
 
-- name: Run NGINX docker
-  shell: docker run --name {{ nginx_container_name }} --net {{nginx_container_network}} -v {{ nginx_data_dir }}/nginx.conf:/etc/nginx/nginx.conf:ro -v {{ nginx_data_dir }}:/etc/nginx/ -p {{ nginx_container_port }} --restart unless-stopped --detach nginx 
-  when: not nginx_container_exist.rc == 0
 
-- name: Start existing NGINX docker container
-  shell: docker start {{ nginx_container_name }}
-  when: nginx_container_exist.rc == 0 and not nginx_container_running.rc == 0
+    - name: copy https server config
+      template:
+        src: default.server.https.conf.j2 
+        dest: "{{ reverse_proxy_nginx_data_dir }}/conf.d/default.server.https.conf"
+        owner: root
+        mode: 0600
+      notify: "reverse_proxy_nginx_restart"
 
-- name: Restart NGINX container if config changed
-  shell: docker restart {{ nginx_container_name }}
-  when: nginx_config.changed
+   
+  when: reverse_proxy_nginx_https
+  become: true

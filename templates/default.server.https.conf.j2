@@ -1,0 +1,19 @@
+server {
+    listen       443 ssl;
+    server_name  {{ ansible_hostname }};
+  
+    ssl_certificate     /etc/nginx/certs/{{ ansible_hostname }}.{{ reverse_proxy_nginx_cert_ext }};
+    ssl_certificate_key /etc/nginx/certs/{{ ansible_hostname }}.key;
+
+    location ~ /\.ht {
+        deny  all;
+    }
+
+    location / {
+      root /usr/share/nginx/html;
+      index index.html  index.html;
+    }
+
+    include /etc/nginx/conf.d/*.https.location;
+}
+

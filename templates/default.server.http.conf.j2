@@ -1,0 +1,16 @@
+server {
+    listen       80;
+    server_name  localhost;
+  
+    location ~ /\.ht {
+        deny  all;
+    }
+
+    location / {
+      root /usr/share/nginx/html;
+      index index.html  index.htm;
+    }
+
+    include /etc/nginx/conf.d/*.http.location;
+}
+
