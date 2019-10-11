@@ -10,6 +10,7 @@ reverse_proxy_docker_remove_container: false
 reverse_proxy_nginx_new_cert: false
 # reverse_proxy_nginx_new_config will archive old config to old_config_<epoch>.tar.gx and roll out new config when set to true
 reverse_proxy_nginx_new_config: false
+reverse_proxy_port: 443
 
 # config
 reverse_proxy_nginx_http: false

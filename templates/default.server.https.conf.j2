@@ -1,5 +1,5 @@
 server {
-    listen       443 ssl;
+    listen       {{ reverse_proxy_port }} ssl;
     server_name  {{ ansible_hostname }};
   
     ssl_certificate     /etc/nginx/certs/{{ ansible_hostname }}.{{ reverse_proxy_nginx_cert_ext }};
