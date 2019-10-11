@@ -96,22 +96,22 @@
         - archive_cert.failed 
         - '"no source paths were found" not in archive_cert.msg'
 
-    - name: generate certificate
-      include_tasks: ./ansible-playbooks/ipa-getcert.yml 
-      vars:
-        pki_dir: "{{ reverse_proxy_nginx_data_dir }}/certs"
-        ipa_host: "{{ server }}"
-        ipa_admin_user: "{{ ipa_principal }}"
-        ipa_admin_pass: "{{ ipa_password }}"
-        use_custom_root: false
-        cert_chain_checksum: "{{ vault_ipa_cert_hash }}"
-      when: domain_joined.rc == 0
-    - set_fact: 
-        reverse_proxy_nginx_cert_ext: chain
-      when: domain_joined.rc == 0
+#    - name: generate certificate
+#      include_tasks: ./ansible-playbooks/ipa-getcert.yml 
+#      vars:
+#        pki_dir: "{{ reverse_proxy_nginx_data_dir }}/certs"
+#        ipa_host: "{{ server }}"
+#        ipa_admin_user: "{{ ipa_principal }}"
+#        ipa_admin_pass: "{{ ipa_password }}"
+#        use_custom_root: false
+#        cert_chain_checksum: "{{ vault_ipa_cert_hash }}"
+#      when: domain_joined.rc == 0
+#    - set_fact: 
+#        reverse_proxy_nginx_cert_ext: chain
+#      when: domain_joined.rc == 0
 
     - include_tasks: get_selfsigned_cert.yaml
-      when: domain_joined.rc != 0
+      #when: domain_joined.rc != 0
 
 
     - name: copy https server config
